@@ -1,14 +1,13 @@
 defmodule StepvoWeb.ConversationLive do
-  # Sets up this module as a LiveView, bringing in necessary behaviours
-  # and functions from Phoenix.LiveView and helpers from StepvoWeb.
   use StepvoWeb, :live_view
 
-  # REMOVED: import StepvoWeb.ConversationComponents (Use Alias or full name)
+  import Ash.Query
 
-  # Aliases for easier access to modules we'll use frequently.
-  alias Stepvo.Conversation         # Your Ash API module
-  alias Stepvo.Conversation.Comment # UNCOMMENTED: Your Ash Resources
-  alias StepvoWeb.ConversationComponents # Your component module (Keep this)
+  alias Stepvo.Conversation
+  alias Stepvo.Conversation.Comment
+  alias Stepvo.Conversation.Vote
+  alias StepvoWeb.ConversationComponents
+  alias AshPhoenix.Form
 
   # mount/3: Called once when the LiveView process starts for a user session.
   # Its job is to perform initial setup and assign the starting state.
@@ -16,28 +15,27 @@ defmodule StepvoWeb.ConversationLive do
   def mount(_params, _session, socket) do
     # User is assigned by the on_mount hook in the router
 
-    comments =
-      Stepvo.Conversation.Comment
-        |> Ash.Query.do_filter(parent_comment_id: nil)
-        |> Ash.Query.load([
-          :user,
-          :vote_score,
-          child_comments: [
-            sort: [desc: :vote_score],
-            load: [:user, :vote_score]
-          ]
-        ])
-        |> Ash.read!(Stepvo.Conversation)
-        # actor: socket.assigns.current_user # Use if read policies need actor
+    # Build the Ash query for fetching the comments tree
+    comments_query = build_comments_query()
+
+    # Read the comments using the query. The API is set within build_comments_query.
+    # actor: socket.assigns.current_user # Uncomment and use if read policies need an actor
+    IO.inspect(comments_query, label: "Comments Query")
+    comments = Ash.read!(comments_query) # Fetch comments without sorting
+    sorted_comments = Enum.sort(comments, &(&1.vote_score >= &2.vote_score)) # Manually sort by vote_score
+    IO.inspect(sorted_comments, label: "Sorted Comments")
 
 
     socket =
       socket
       # Note: current_user is already assigned by on_mount
-      |> assign(:comments, comments)
+      |> assign(:comments, sorted_comments)
       |> assign(:replying_to_id, nil)
       |> assign(:reply_form, nil)
       |> assign(:page_title, "Conversation")
+      # Store the comments query (which includes recursive load and API) in assigns
+      |> assign(:comments_query, comments_query)
+
 
     {:ok, socket}
   end
@@ -53,7 +51,9 @@ defmodule StepvoWeb.ConversationLive do
 
     <div class="mt-6">
 
-      <ConversationComponents.comment_tree
+      <%!-- Pass all relevant assigns down to the comment_tree component --%>
+      <%!-- Use a static ID for the main tree component for stable patching --%>
+      <.live_component module={StepvoWeb.ConversationComponents}
         id="comment-tree-root"
         comments={@comments}
         current_user={@current_user}
@@ -79,7 +79,7 @@ defmodule StepvoWeb.ConversationLive do
         Stepvo.Conversation.Vote
         |> Ash.Changeset.for_create(:create, vote_params, actor: current_user)
 
-      case Ash.create(vote_changeset) do
+      case Ash.create(vote_changeset, api: Stepvo.Conversation) do
         {:ok, _vote} ->
           {:noreply, put_flash(socket, :info, "Vote registered successfully.")}
 
@@ -90,11 +90,10 @@ defmodule StepvoWeb.ConversationLive do
             |> Enum.join(", ")
             |> Kernel.||("Could not register vote.")
 
-          {:noreply, put_flash(socket, :error, error_msg)}
-
+          {:noreply, put_flash(socket, :error, "Error voting: #{error_msg}")}
       end
     else
-      _->
+      _ ->
         {:noreply, put_flash(socket, :error, "You must be logged in to vote.")}
     end
   end
@@ -102,7 +101,7 @@ defmodule StepvoWeb.ConversationLive do
   @impl true
   def handle_event("show_reply_form", %{"comment-id" => comment_id}, socket) do
     if socket.assigns.current_user do
-      # Use Comment alias
+      # Use Comment alias. Keep api: Conversation here, as AshPhoenix.Form.for_create expects the API
       form = AshPhoenix.Form.for_create(Comment, :create, api: Conversation, params: %{parent_comment_id: comment_id})
       socket =
         socket
@@ -125,7 +124,7 @@ defmodule StepvoWeb.ConversationLive do
 
   @impl true
   def handle_event("validate_reply", %{"comment" => comment_params}, socket) do
-     # CORRECTED: Removed the case statement
+     # Use Form alias
      form = AshPhoenix.Form.validate(socket.assigns.reply_form, comment_params)
      {:noreply, assign(socket, :reply_form, form)}
   end
@@ -135,22 +134,50 @@ defmodule StepvoWeb.ConversationLive do
      with %{} = current_user <- socket.assigns.current_user,
           %{} = form <- socket.assigns.reply_form do
 
-      # Use Form alias
-      case AshPhoenix.Form.submit(form, params: comment_params, actor: current_user, api: Conversation) do
-        {:ok, _} ->
-          socket =
-            socket
-            |> assign(:replying_to_id, nil)
-            |> assign(:reply_form, nil)
-            |> put_flash(:info, "Reply posted!")
-          # TODO: Update @comments assign to show the new reply
-          {:noreply, socket}
-        {:error, form} ->
-          {:noreply, assign(socket, :reply_form, form)}
-       end
+       # Use Form alias
+       # Keep api: Conversation here, as AshPhoenix.Form.submit expects the API
+       case AshPhoenix.Form.submit(form, params: comment_params, actor: current_user, api: Conversation) do
+         {:ok, _new_comment} -> # New comment successfully created!
+
+           # --- Start: Logic to dynamically update comments list ---
+
+           # Re-fetch the entire conversation tree.
+           # Use the comments_query defined in mount for consistency.
+           # The API is already set within the query object stored in assigns.
+           updated_comments = Ash.read!(socket.assigns.comments_query) # Correct: Removed api: option here
+
+           socket =
+             socket
+             |> assign(:comments, updated_comments) # Update the main comments assign
+             |> assign(:replying_to_id, nil) # Hide the form
+             |> assign(:reply_form, nil) # Clear the form state
+             |> put_flash(:info, "Reply posted!") # Show success message
+
+           # --- End: Logic to dynamically update comments list ---
+
+           {:noreply, socket}
+
+         {:error, form} ->
+           # If there's a validation error, update the form assign to display errors
+           {:noreply, assign(socket, :reply_form, form)}
+        end
      else
-        _ ->
-          {:noreply, put_flash(socket, :error, "Could not save reply.")}
+         _ ->
+        # This 'else' handles cases where current_user or reply_form were nil
+        {:noreply, put_flash(socket, :error, "Could not save reply. Please try again.")}
      end
   end
+
+  # Helper function to define the comments query
+  defp build_comments_query do
+    Stepvo.Conversation.Comment
+    |> Ash.Query.do_filter(parent_comment_id: nil) # Filter for root comments
+    |> Ash.Query.load([
+      :user, # Load the user for the current comment
+      :vote_score, # Load the vote score for the current comment
+      child_comments: [:user, :vote_score] # Specify what to load for child comments
+    ])
+    |> Ash.Query.set_domain(Stepvo.Conversation) # Correct: Set the domain on the query
+ end
+
 end

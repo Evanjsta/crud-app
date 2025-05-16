@@ -1,13 +1,11 @@
 defmodule StepvoWeb.ConversationComponents do
   use StepvoWeb, :component
-  # If using @derive {Phoenix.Component, required_assigns: ...}
-  # use StepvoWeb, :verified_component
 
-  # TODO: Uncomment these aliases when needed
-  # alias Stepvo.Conversation.Comment
-  # alias Stepvo.Conversation.User
-  # alias AshPhoenix.Form
-  # alias StepvoWeb.CoreComponents # Or MishkaChelekom if using their form components
+
+   alias Stepvo.Conversation.Comment
+   alias Stepvo.Conversation.User
+   alias AshPhoenix.Form
+   alias StepvoWeb.CoreComponents # Or MishkaChelekom if using their form components
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Comment Card Component and its Private Helpers
@@ -29,8 +27,6 @@ defmodule StepvoWeb.ConversationComponents do
       managed by the parent LiveView. Required if replying_to_id matches comment.id.
   """
   @spec comment_card(map) :: term() # Correct return type hint
-  # Uncomment and list required assigns if using :verified_component
-  # @derive {Phoenix.Component, required_assigns: [:comment, :current_user]}
   def comment_card(assigns) do
     ~H"""
     <div class="comment-card border border-gray-200 rounded-lg shadow-sm p-4 my-3 bg-white" id={"comment-#{@comment.id}"}>

@@ -33,6 +33,7 @@ defmodule Stepvo.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:tidewave, "~> 0.1", only: [:dev]},
       {:mishka_chelekom, "~> 0.0.4", only: [:dev]},
       {:live_debugger, "~> 0.1", only: [:dev]},
       {:ash_state_machine, "~> 0.2.9"},
@@ -74,7 +75,6 @@ defmodule Stepvo.MixProject do
       {:uuid, "~> 1.1"}
     ]
   end
-
 
   # Aliases are shortcuts or tasks specific to the current project.
   # For example, to install project dependencies and perform other setup tasks, run:

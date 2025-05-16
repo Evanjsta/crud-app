@@ -47,7 +47,9 @@ defmodule Stepvo.Conversation.Comment do
   aggregates do
     count :vote_count, :votes
     sum :vote_score, :votes, :value
-  end
+
+    end
+  
 
   actions do
     defaults [:create, :read, :update, :destroy]
