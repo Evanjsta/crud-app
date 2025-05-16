@@ -2,6 +2,8 @@ defmodule StepvoWeb.ConversationLive do
   use StepvoWeb, :live_view
 
   import Ash.Query
+  on_mount StepvoWeb.UserAuth
+
 
   alias Stepvo.Conversation
   alias Stepvo.Conversation.Comment

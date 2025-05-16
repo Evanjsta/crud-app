@@ -1,12 +1,26 @@
 defmodule StepvoWeb.Layouts do
-  @moduledoc """
-  This module holds different layouts used by your application.
+  use Phoenix.Component
 
-  Layouts are defined as function components directly within this module.
-  The "root" layout provides the basic HTML structure.
-  The "app" layout provides the main application structure with navigation etc.
+  @moduledoc """
+  Provides layout rendering for LiveViews and other components.
   """
-  use StepvoWeb, :html # Use the helper which imports Phoenix.Component, CoreComponents etc.
+
+  def live(assigns) do
+    ~H"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title><%= assigns[:page_title] || "Stepvo" %></title>
+      <%= Phoenix.HTML.raw(assigns[:live_view_module].__live_reloader__()) %>
+    </head>
+    <body>
+      <%= @inner_content %>
+    </body>
+    </html>
+    """
+  end
 
   # Define root layout directly as a function component
   def root(assigns) do
@@ -58,5 +72,4 @@ defmodule StepvoWeb.Layouts do
     </main>
     """
   end
-
 end

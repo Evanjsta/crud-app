@@ -29,7 +29,7 @@ defmodule StepvoWeb.Router do
 
     # Routes that don't require login or LV session state
     # get "/", PageController, :home
-    live "/", ConversationLive, on_mount: [StepvoWeb.UserAuth]
+    live "/", ConversationLive
 
     # Add any other routes here as needed
     get "/auth/user/magic", AuthController, :magic

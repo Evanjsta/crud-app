@@ -54,9 +54,10 @@ defmodule StepvoWeb do
   def live_view do
     quote do
       use Phoenix.LiveView,
-        layout: {StepvoWeb.Layouts, :app}
+        layout: {StepvoWeb.Layouts, :live}
 
       unquote(html_helpers())
+      #on_mount {AshAuthentication.Phoenix.LiveView.CurrentUserHook, otp_app: :stepvo}
     end
   end
 

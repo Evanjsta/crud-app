@@ -64,6 +64,13 @@ config :stepvo, ash_domains: [Stepvo.Conversation]
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Configure Ash Authentication
+config :ash_authentication,
+  otp_app: :stepvo
+
+config :ash_authentication_phoenix,
+  otp_app: :stepvo
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
