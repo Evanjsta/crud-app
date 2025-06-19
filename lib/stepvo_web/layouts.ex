@@ -1,5 +1,5 @@
 defmodule StepvoWeb.Layouts do
-  use Phoenix.Component
+  use StepvoWeb, :html  # This will import all the necessary helpers
 
   @moduledoc """
   Provides layout rendering for LiveViews and other components.
