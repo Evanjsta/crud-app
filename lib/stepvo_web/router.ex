@@ -1,6 +1,7 @@
 defmodule StepvoWeb.Router do
   use StepvoWeb, :router
   import AshAuthentication.Phoenix
+
   use AshAuthentication.Phoenix.Router,
     otp_app: :stepvo,
     strategies: [
@@ -10,11 +11,12 @@ defmodule StepvoWeb.Router do
         sender: StepvoAuth.User.Sender
       ]
     ]
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
-    plug :put_root_layout, html: {StepvoWeb.LayoutView, :root}
+    plug :put_root_layout, html: {StepvoWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
   end

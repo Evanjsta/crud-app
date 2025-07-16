@@ -1,119 +1,126 @@
 defmodule StepvoWeb.ConversationComponents do
   use StepvoWeb, :component
 
-
-   alias Stepvo.Conversation.Comment
-   alias Stepvo.Conversation.User
-   alias AshPhoenix.Form
-   alias StepvoWeb.CoreComponents # Or MishkaChelekom if using their form components
+  alias Stepvo.Conversation.Comment
+  alias Stepvo.Conversation.User
+  alias AshPhoenix.Form
+  alias StepvoWeb.CoreComponents
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Comment Card Component and its Private Helpers
+  # Comment Tree Component - matches our static mockup design
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  @doc """
+  Renders a list of comments and their nested children recursively.
+  """
+  @spec comment_tree(map) :: term()
+  def comment_tree(assigns) do
+    # Required Assigns: comments (list of %Comment{}), current_user, replying_to_id, reply_form
+    ~H"""
+    <div :for={comment <- @comments}>
+      <.comment_card
+        comment={comment}
+        current_user={@current_user}
+        replying_to_id={@replying_to_id}
+        reply_form={@reply_form}
+      />
+
+      <div :if={comment.child_comments != []} class="ml-6 border-l-2 border-gray-100 pl-4">
+        <.comment_tree
+          comments={comment.child_comments}
+          current_user={@current_user}
+          replying_to_id={@replying_to_id}
+          reply_form={@reply_form}
+        />
+      </div>
+    </div>
+    """
+  end
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Comment Card Component - matches our static mockup design
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   @doc """
   Renders a single comment card with content, metadata, and actions.
-
-  Requires preloading on the comment struct: `:user`, `:vote_score`.
-  Consider preloading votes associated with the `current_user` if displaying
-  active vote states on buttons is desired.
-
-  Assigns:
-    - comment (required): The %Comment{} struct to display.
-    - current_user (required): The currently logged-in %User{} or nil.
-    - replying_to_id (optional): The ID of the comment the parent LiveView
-      is currently showing the reply form for. Defaults to nil.
-    - reply_form (optional): The %AshPhoenix.Form{} struct for the reply form,
-      managed by the parent LiveView. Required if replying_to_id matches comment.id.
+  Matches the exact design from our static mockup.
   """
-  @spec comment_card(map) :: term() # Correct return type hint
+  @spec comment_card(map) :: term()
   def comment_card(assigns) do
     ~H"""
-    <div class="comment-card border border-gray-200 rounded-lg shadow-sm p-4 my-3 bg-white" id={"comment-#{@comment.id}"}>
-      <.comment_content comment={@comment} />
-      <.comment_meta comment={@comment} />
-      <.comment_actions comment={@comment} current_user={@current_user} />
+    <div
+      class="comment-item bg-white rounded-lg border border-gray-200 p-4 mb-4"
+      id={"comment-#{@comment.id}"}
+    >
+      <div class="flex items-start space-x-3">
+        <!-- Vote controls -->
+        <div class="flex flex-col items-center space-y-1 mt-1">
+          <button
+            phx-click="vote"
+            phx-value-comment-id={@comment.id}
+            phx-value-vote="1"
+            class="text-gray-400 hover:text-green-600 transition-colors"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fill-rule="evenodd"
+                d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+                clip-rule="evenodd"
+              >
+              </path>
+            </svg>
+          </button>
+          <span class="text-sm font-medium text-gray-700">+{@comment.vote_score || 0}</span>
+          <button
+            phx-click="vote"
+            phx-value-comment-id={@comment.id}
+            phx-value-vote="-1"
+            class="text-gray-400 hover:text-red-600 transition-colors"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fill-rule="evenodd"
+                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              >
+              </path>
+            </svg>
+          </button>
+        </div>
+        
+    <!-- Comment content -->
+        <div class="flex-1">
+          <div class="prose prose-sm max-w-none">
+            <p class="text-gray-800 leading-relaxed">
+              {@comment.content}
+            </p>
+          </div>
 
-      <.maybe_show_reply_form
-        comment={@comment}
-        current_user={@current_user}
-        replying_to_id={@replying_to_id}
-        form={@reply_form}
-      />
+          <div class="flex items-center space-x-4 mt-3 text-xs text-gray-500">
+            <span class="font-medium text-gray-700">
+              {(@comment.user && @comment.user.username) || "Unknown"}
+            </span>
+            <span>{format_time_ago(@comment.inserted_at)}</span>
+            <button
+              :if={@current_user}
+              phx-click="show_reply_form"
+              phx-value-comment-id={@comment.id}
+              class="hover:text-blue-600 transition-colors"
+            >
+              Reply
+            </button>
+          </div>
+          
+    <!-- Reply form if currently replying to this comment -->
+          <.maybe_show_reply_form
+            comment={@comment}
+            current_user={@current_user}
+            replying_to_id={@replying_to_id}
+            form={@reply_form}
+          />
+        </div>
+      </div>
     </div>
     """
-  end
-
-  # --- Private Helper Functions for comment_card ---
-
-  @doc false
-  defp comment_content(assigns) do
-    ~H"""
-    <p class="text-gray-800 mb-2 text-base"><%= @comment.content %></p>
-    """
-  end
-
-  @doc false
-  defp comment_meta(assigns) do
-    ~H"""
-    <div class="text-xs text-gray-500 border-t border-gray-100 pt-2 mt-2"> <%!-- Changed <.div to <div --%>
-      <span>Posted by: <span class="font-medium text-gray-700"><%= @comment.user && @comment.user.username || "Unknown" %></span></span>
-      <span class="ml-4">Score: <span class="font-semibold text-gray-800"><%= @comment.vote_score || 0 %></span></span>
-      <%!-- Maybe add timestamp later: <.human_time datetime={@comment.inserted_at} /> --%>
-    </div>
-    """
-  end
-
-  @doc false
-  defp comment_actions(assigns) do
-    ~H"""
-    <div :if={@current_user} class="flex items-center space-x-1 mt-3"> <!-- Changed <.div to <div -->
-      <.vote_button comment_id={@comment.id} vote_value={1} />
-      <.vote_button comment_id={@comment.id} vote_value={-1} />
-
-      <.button phx-click="show_reply_form" phx-value-comment-id={@comment.id} class="ml-2">
-        Reply
-      </.button>
-
-      <%!-- Add edit/delete buttons later based on policy checks --%>
-    </div>
-    """
-  end
-
-  # --- Private Helper for Voting Buttons ---
-  @doc false
-  defp vote_button(assigns) do
-    # Required Assigns: comment_id, vote_value (1 or -1)
-    # Access vote_value from assigns map, not as @vote_value
-    vote_value = assigns[:vote_value] # Corrected access
-
-    # Calculate values
-    icon_name = if vote_value == 1, do: "hero-arrow-up-solid", else: "hero-arrow-down-solid"
-    label_text = if vote_value == 1, do: "Upvote", else: "Downvote"
-    color_class = "text-gray-500 hover:text-gray-700 focus:text-gray-700" # Default state
-    # TODO: Add logic here later if you pass in the user's current vote for this comment
-    # active_class = if assigns[:current_user_vote] == vote_value, do: "text-indigo-600", else: color_class
-
-    # Assign calculated values back to assigns for use in HEEx
-    assigns =
-      assigns
-      |> assign_new(:icon_name, fn -> icon_name end) # Use assign_new or assign
-      |> assign_new(:label_text, fn -> label_text end)
-      |> assign_new(:color_class, fn -> color_class end)
-
-    ~H"""
-    <.button
-      phx-click="vote"
-      phx-value-comment-id={@comment_id}
-      phx-value-vote={@vote_value}
-      aria-label={@label_text}
-      class={"!p-1 #{@color_class}"}
-      >
-      <.icon name={@icon_name} class="h-4 w-4" />
-    </.button>
-    """
-    # size="xs"
-    # kind="ghost" this is in case these attributes are needed later.
   end
 
   # --- Private Helper for Conditionally Showing Reply Form ---
@@ -136,58 +143,58 @@ defmodule StepvoWeb.ConversationComponents do
   @doc false
   defp comment_form(assigns) do
     # Required Assigns: parent_comment_id, current_user, form_id, form
-    # Needs: `:form` assign passed down from LiveView containing the AshPhoenix.Form struct
-
-    # REMOVED: form = assigns[:form] || nil (Unused variable)
-
     ~H"""
     <div class="mt-4 ml-8 pl-4 border-l-2 border-gray-200">
       <.simple_form
-          :if={@form}
-          for={@form}
-          id={@form_id}
-          phx-submit="save_reply"
-          phx-change="validate_reply"
-          phx-value-parent-id={@parent_comment_id}
+        :if={@form}
+        for={@form}
+        id={@form_id}
+        phx-submit="save_reply"
+        phx-change="validate_reply"
+        phx-value-parent-id={@parent_comment_id}
+        class="space-y-3"
+      >
+        <.input
+          field={@form[:content]}
+          type="textarea"
+          label="Your Reply"
+          placeholder="Add your comment..."
+          class="text-sm border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500 px-3 py-2"
+        />
+        <div class="flex space-x-2">
+          <button
+            type="submit"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
           >
-            <.input field={@form[:content]} type="textarea" label="Your Reply" placeholder="Add your comment..." class="text-sm"/>
-            <.button type="submit">Submit Reply</.button>
-            <.button type="button" phx-click="hide_reply_form" phx-value-comment-id={@parent_comment_id} class="ml-2">Cancel</.button>
+            Submit Reply
+          </button>
+          <button
+            type="button"
+            phx-click="hide_reply_form"
+            phx-value-comment-id={@parent_comment_id}
+            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
+          >
+            Cancel
+          </button>
+        </div>
       </.simple_form>
     </div>
     """
-    # Replace <.simple_form> and <.input> with components from CoreComponents or Chelekom UI
   end
 
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Comment Tree Component (from previous example, uses comment_card)
-  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  @doc """
-  Renders a list of comments and their nested children recursively.
-  """
-  @spec comment_tree(map) :: term()
-  def comment_tree(assigns) do
-    # Required Assigns: comments (list of %Comment{}), current_user, replying_to_id, reply_form
-    ~H"""
-    <div :for={comment <- @comments}>
-      <.comment_card
-          comment={comment}
-          current_user={@current_user}
-          replying_to_id={@replying_to_id}
-          reply_form={@reply_form} />
+  # Helper function to format time
+  defp format_time_ago(nil), do: "unknown"
 
+  defp format_time_ago(datetime) do
+    now = DateTime.utc_now()
+    diff = DateTime.diff(now, datetime, :second)
 
-    <div :if={comment.child_comments != []} class="ml-4 lg:ml-6">
-      <.comment_tree
-          comments={comment.child_comments}
-          current_user={@current_user}
-          replying_to_id={@replying_to_id}
-          reply_form={@reply_form}/>
-      </div>
-    </div>
-    """
+    cond do
+      diff < 60 -> "#{diff}s ago"
+      diff < 3600 -> "#{div(diff, 60)}m ago"
+      diff < 86400 -> "#{div(diff, 3600)}h ago"
+      diff < 604_800 -> "#{div(diff, 86400)}d ago"
+      true -> "#{div(diff, 604_800)}w ago"
+    end
   end
-
-  # --- Add other conversation-related components below ---
-
 end
