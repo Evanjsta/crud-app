@@ -40,13 +40,13 @@ window.scrollRow = function (rowId, direction) {
     left: direction === "left" ? -scrollAmount : scrollAmount,
     behavior: "smooth",
   });
-  setTimeout(updateConnectingLines, 300); // Redraw lines after scroll animation
+  setTimeout(window.updateConnectingLines, 300); // Redraw lines after scroll animation
 };
 
 // SVG Connecting Lines Functionality
-function updateConnectingLines() {
-  const svg = document.getElementById("svg-connectors");
-  const mainContainer = document.getElementById("main-container");
+window.updateConnectingLines = function updateConnectingLines() {
+  const svg = document.getElementById("connection-lines");
+  const mainContainer = document.getElementById("conversation-container");
 
   if (!svg || !mainContainer) return;
 
@@ -78,7 +78,7 @@ function updateConnectingLines() {
   grandchildren.forEach((grandchild) => {
     drawLine(parentOfGrandchildren, grandchild, svg, mainContainer);
   });
-}
+};
 
 function drawLine(fromElem, toElem, svg, mainContainer) {
   if (!fromElem || !toElem || !svg || !mainContainer) return;
@@ -113,10 +113,10 @@ let Hooks = {};
 Hooks.ConversationTree = {
   mounted() {
     // Initialize connection lines when the LiveView mounts
-    updateConnectingLines();
+    window.updateConnectingLines();
 
     // Set up event listeners for window resize and row scrolling
-    window.addEventListener("resize", updateConnectingLines);
+    window.addEventListener("resize", window.updateConnectingLines);
 
     // Add scroll event listeners to rows
     const row2 = document.getElementById("row2");
@@ -124,19 +124,19 @@ Hooks.ConversationTree = {
 
     if (row2) {
       row2.addEventListener("scroll", () =>
-        setTimeout(updateConnectingLines, 150),
+        setTimeout(window.updateConnectingLines, 150),
       );
     }
     if (row3) {
       row3.addEventListener("scroll", () =>
-        setTimeout(updateConnectingLines, 150),
+        setTimeout(window.updateConnectingLines, 150),
       );
     }
   },
 
   updated() {
     // Redraw connection lines when the LiveView updates
-    setTimeout(updateConnectingLines, 100);
+    setTimeout(window.updateConnectingLines, 100);
   },
 };
 
