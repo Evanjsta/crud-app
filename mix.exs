@@ -20,7 +20,7 @@ defmodule Stepvo.MixProject do
   def application do
     [
       mod: {Stepvo.Application, []},
-      extra_applications: [:logger, :runtime_tools, :ash, :ash_authentication_phoenix]
+      extra_applications: [:logger, :runtime_tools, :ash, :ash_authentication_phoenix,:ash_postgres, :ash_authentication]
     ]
   end
 

@@ -29,11 +29,10 @@ defmodule StepvoWeb.Router do
   scope "/", StepvoWeb do
     pipe_through :browser
 
-    # Routes that don't require login or LV session state
-    # get "/", PageController, :home
-    live "/", ConversationLive
+    live_session :default do
+      live "/", ConversationLive
+    end
 
-    # Add any other routes here as needed
     get "/auth/user/magic", AuthController, :magic
   end
 

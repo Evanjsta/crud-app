@@ -42,9 +42,9 @@ defmodule Stepvo.Conversation.Comment do
     has_many :votes, Stepvo.Conversation.Vote
   end
 
-  aggregates do
-    count(:vote_count, :votes)
-    sum(:vote_score, :votes, :value)
+  calculations do
+    calculate :vote_score, :integer, expr(sum(filter(relationships.votes.value, not is_nil(value))))
+    calculate :vote_count, :integer, expr(count(relationships.votes))
   end
 
   actions do

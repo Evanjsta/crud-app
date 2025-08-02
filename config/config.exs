@@ -1,4 +1,4 @@
-# This file is responsible for configuring your application
+# This file is responsible for aconfiguring your application
 # and its dependencies with the aid of the Config module.
 #
 # This configuration file is loaded before any dependency and
@@ -23,12 +23,6 @@ config :stepvo, StepvoWeb.Endpoint,
   live_view: [signing_salt: "6f7Mbch4"]
 
 # Configures the mailer
-#
-# By default it uses the "Local" adapter which stores the emails
-# locally. You can see the emails in your browser, at "/dev/mailbox".
-#
-# For production it's recommended to configure a different adapter
-# at the `config/runtime.exs`.
 config :stepvo, Stepvo.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
@@ -58,7 +52,8 @@ config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
-# Tell Ash about the domains in our application
+# --- ADD THIS LINE ---
+# This is the configuration the compiler warning asked for.
 config :stepvo, ash_domains: [Stepvo.Conversation]
 
 # Use Jason for JSON parsing in Phoenix
